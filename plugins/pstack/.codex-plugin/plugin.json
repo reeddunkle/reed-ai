@@ -1,0 +1,26 @@
+{
+  "name": "pstack-skills",
+  "version": "0.15.2",
+  "description": "Skills-only Codex port of pstack, a rigorous agent-workflow skill collection: design, review, verification, and engineering-principle skills you can parallelize with confidence. Ported from the original Cursor plugin; agents, automations, and Cursor-only mechanisms were left behind. See PORTING_NOTES.md.",
+  "author": {
+    "name": "Lauren Tan"
+  },
+  "homepage": "https://github.com/cursor/plugins/tree/main/pstack",
+  "license": "MIT",
+  "keywords": [
+    "pstack",
+    "workflow",
+    "principles",
+    "agent-style",
+    "unslop",
+    "verification"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "pstack (skills)",
+    "shortDescription": "Design, review, verification, and engineering skills",
+    "longDescription": "A skills-only Codex port of pstack with reusable workflows for design, review, verification, and engineering principles.",
+    "developerName": "Lauren Tan",
+    "category": "Developer Tools"
+  }
+}

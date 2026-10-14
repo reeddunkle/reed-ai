@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "marketplace": {
+    "name": "reed-ai",
+    "source": ".agents/plugins/marketplace.json"
+  },
+  "skills": [
+    "code-comment-policy",
+    "data-transformation-style",
+    "effect-conventions",
+    "effect-layer-conventions",
+    "general-js-ts-style",
+    "node-with-fnm"
+  ],
+  "plugins": [
+    {
+      "id": "pstack",
+      "packageName": "pstack-skills",
+      "source": "plugins/pstack",
+      "explicitOnly": true,
+      "claudeDestination": ".claude/skills/pstack-claude-plugin"
+    }
+  ],
+  "instructions": [
+    {
+      "source": "instructions/shared.md",
+      "destinations": [
+        ".claude/AGENTS.md",
+        ".claude/CLAUDE.md",
+        ".codex/AGENTS.md"
+      ]
+    }
+  ],
+  "thirdParty": [
+    {
+      "id": "find-skills",
+      "source": "vercel-labs/skills",
+      "managedBy": "skills installer"
+    },
+    {
+      "id": "mattpocock-skills",
+      "version": "1.2.3",
+      "managedBy": "Claude and Codex plugin managers"
+    }
+  ]
+}

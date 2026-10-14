@@ -1,0 +1,9 @@
+{
+  "claude": {
+    "enabledPlugins": ["mattpocock-skills@claude-plugins-official"],
+    "disableBundledSkills": true
+  },
+  "codex": {
+    "enabledPlugins": ["mattpocock-skills@claude-plugins-official"]
+  }
+}

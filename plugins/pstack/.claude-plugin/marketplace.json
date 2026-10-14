@@ -1,0 +1,14 @@
+{
+	"name": "pstack-skills-marketplace",
+	"description": "Canonical pstack skills shared by Claude and Codex.",
+	"owner": {
+		"name": "reed-ai maintainers"
+	},
+	"plugins": [
+		{
+			"name": "pstack-skills",
+			"source": "./",
+			"description": "44 pstack skills ported to Claude's SKILL.md format, installable in one shot."
+		}
+	]
+}

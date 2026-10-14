@@ -1,0 +1,13 @@
+import * as Data from "effect/Data";
+
+export class InvalidManifestError extends Data.TaggedError("InvalidManifestError")<{
+  readonly message: string;
+}> {}
+
+export class DriftDetectedError extends Data.TaggedError("DriftDetectedError")<{
+  readonly count: number;
+}> {}
+
+export class ConflictDetectedError extends Data.TaggedError("ConflictDetectedError")<{
+  readonly count: number;
+}> {}
