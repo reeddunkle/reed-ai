@@ -124,9 +124,9 @@ export const buildDesiredFiles = (
       targetSelection === "all" ? targets : targets.filter((target) => target === targetSelection);
     const skillFiles = yield* E.all(
       manifest.skills.flatMap((skill) =>
-        selectedTargets.map((target) => {
-          const source = path.join(projectRoot, "skills", skill);
-          const destination = joinPath(path, homeDirectory, `.${target}`, "skills", skill);
+        selectedTargets.filter((target) => skill.targets.includes(target)).map((target) => {
+          const source = path.join(projectRoot, "skills", skill.id);
+          const destination = joinPath(path, homeDirectory, `.${target}`, "skills", skill.id);
           return expandDirectory(source, destination, target);
         }),
       ),
@@ -236,7 +236,7 @@ export const validateProject = (projectRoot: string, manifest: Manifest) =>
     const personalPaths = desired.filter((file) => /C:\\Users\\[^\\]+/i.test(file.contents));
     const missingSkills = yield* E.all(
       manifest.skills.map((skill) =>
-        fileSystem.exists(path.join(projectRoot, "skills", skill, "SKILL.md")).pipe(
+        fileSystem.exists(path.join(projectRoot, "skills", skill.id, "SKILL.md")).pipe(
           E.map((exists) => ({ exists, skill })),
         ),
       ),
@@ -323,7 +323,7 @@ export const validateProject = (projectRoot: string, manifest: Manifest) =>
         .flat()
         .filter((policy) => !policy.valid)
         .map((policy) => policy.policyPath),
-      missingSkills: missingSkills.filter((entry) => !entry.exists).map((entry) => entry.skill),
+      missingSkills: missingSkills.filter((entry) => !entry.exists).map((entry) => entry.skill.id),
       missingTokens: missingTokens.map((file) => file.source),
       personalPaths: personalPaths.map((file) => file.source),
     };

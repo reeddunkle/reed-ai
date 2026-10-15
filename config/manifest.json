@@ -15,12 +15,34 @@
     "source": ".agents/plugins/marketplace.json"
   },
   "skills": [
-    "code-comment-policy",
-    "data-transformation-style",
-    "effect-conventions",
-    "effect-layer-conventions",
-    "general-js-ts-style",
-    "node-with-fnm"
+    {
+      "id": "archive-claude-sessions",
+      "targets": ["claude"]
+    },
+    {
+      "id": "code-comment-policy",
+      "targets": ["claude", "codex"]
+    },
+    {
+      "id": "data-transformation-style",
+      "targets": ["claude", "codex"]
+    },
+    {
+      "id": "effect-conventions",
+      "targets": ["claude", "codex"]
+    },
+    {
+      "id": "effect-layer-conventions",
+      "targets": ["claude", "codex"]
+    },
+    {
+      "id": "general-js-ts-style",
+      "targets": ["claude", "codex"]
+    },
+    {
+      "id": "node-with-fnm",
+      "targets": ["claude", "codex"]
+    }
   ],
   "plugins": [
     {

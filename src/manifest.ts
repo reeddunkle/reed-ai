@@ -7,6 +7,22 @@ import { InvalidManifestError } from "./errors.js";
 const isStringArray = (value: unknown): value is ReadonlyArray<string> =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
 
+const isTarget = (value: unknown) => value === "claude" || value === "codex";
+
+const isSkill = (value: unknown) =>
+  typeof value === "object" &&
+  value !== null &&
+  "id" in value &&
+  typeof value.id === "string" &&
+  value.id.length > 0 &&
+  "targets" in value &&
+  Array.isArray(value.targets) &&
+  value.targets.length > 0 &&
+  value.targets.every(isTarget) &&
+  new Set(value.targets).size === value.targets.length;
+
+const isSkillArray = (value: unknown) => Array.isArray(value) && value.every(isSkill);
+
 const isRetentionTarget = (value: unknown) =>
   typeof value === "object" &&
   value !== null &&
@@ -36,7 +52,7 @@ export const readManifest = (manifestPath: string) =>
       !("claude" in value.conversationRetention) ||
       !isRetentionTarget(value.conversationRetention.claude) ||
       !("skills" in value) ||
-      !isStringArray(value.skills) ||
+      !isSkillArray(value.skills) ||
       !("plugins" in value) ||
       !Array.isArray(value.plugins) ||
       !("instructions" in value) ||

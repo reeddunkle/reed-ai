@@ -17,7 +17,10 @@ export type Manifest = {
     readonly name: string;
     readonly source: string;
   };
-  readonly skills: ReadonlyArray<string>;
+  readonly skills: ReadonlyArray<{
+    readonly id: string;
+    readonly targets: ReadonlyArray<Target>;
+  }>;
   readonly plugins: ReadonlyArray<{
     readonly id: string;
     readonly packageName: string;

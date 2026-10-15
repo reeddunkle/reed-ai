@@ -35,7 +35,7 @@ pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude deploy
 pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude check
 ```
 
-`plan` is read-only. `deploy` writes only manifest-declared destinations and refuses unrecorded local edits. Shared standalone skills deploy to both tools, while pstack deploys to Claude and installs into Codex through the `reed-ai` marketplace. After reviewing and backing up an intentional first migration, `deploy --force` accepts the existing destinations as the baseline. Later runs should not need `--force`.
+`plan` is read-only. `deploy` writes only manifest-declared destinations and refuses unrecorded local edits. Each standalone skill declares its Claude and Codex deployment targets in the manifest. Pstack deploys to Claude and installs into Codex through the `reed-ai` marketplace. After reviewing and backing up an intentional first migration, `deploy --force` accepts the existing destinations as the baseline. Later runs should not need `--force`.
 
 Selected user-level settings are reconciled from `config/desired-settings.json` into `~/.claude/settings.json` and `~/.codex/config.toml`. Only declared setting paths are managed; unrelated local settings are preserved. Codex TOML management is intentionally limited to declared boolean values and rejects ambiguous relevant tables.
 
@@ -57,7 +57,7 @@ pnpm cli conversations apply --force
 pnpm cli conversations plan --older-than-days 30
 ```
 
-The default retention threshold is configured in `config/manifest.json`. Archival uses last activity, protects current, active, pinned, recent, and partially eligible conversation trees, and writes metadata-only run journals under `~/.reed-ai/archive-runs/`. It is reversible organization, not deletion or disk cleanup. Claude Code is excluded because it does not expose a supported reversible local archive operation.
+The default retention threshold is configured in `config/manifest.json`. Archival uses last activity, protects current, active, pinned, recent, and partially eligible conversation trees, and writes metadata-only run journals under `~/.reed-ai/archive-runs/`. It is reversible organization, not deletion or disk cleanup. Claude Desktop Code sessions use the separately deployed `/archive-claude-sessions` skill because Claude exposes archival through its in-app session tools rather than a supported local CLI.
 
 `cleanup` is limited to legacy `.claude` and `.codex` snapshot directories inside this repository. The canonical `.agents/plugins/marketplace.json` file is outside its cleanup boundary. It never manages or deletes user-home `.agents`, Claude/Codex caches, or unknown home-directory content. `cleanup apply` requires `--force`.
 

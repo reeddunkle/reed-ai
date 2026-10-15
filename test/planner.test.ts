@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { NodeServices } from "@effect/platform-node";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import * as nodePath from "node:path";
 
-import type { DesiredFile } from "../src/domain.js";
+import type { DesiredFile, Manifest } from "../src/domain.js";
 import { classifyFile, hashContents } from "../src/planner.js";
 import { joinPath } from "../src/paths.js";
 import { renderForTarget } from "../src/render.js";
+import { buildDesiredFiles } from "../src/workspace.js";
 import * as Path from "effect/Path";
 import * as E from "effect/Effect";
 
@@ -65,5 +70,46 @@ describe("joinPath", () => {
     );
 
     expect(result).toBe("\\\\wsl.localhost\\Ubuntu\\home\\example\\.claude\\skills");
+  });
+});
+
+describe("buildDesiredFiles", () => {
+  it("deploys skills only to their declared targets", async () => {
+    const projectRoot = mkdtempSync(nodePath.join(tmpdir(), "reed-ai-project-"));
+    const homeDirectory = mkdtempSync(nodePath.join(tmpdir(), "reed-ai-home-"));
+    const manifest: Manifest = {
+      version: 1,
+      conversationRetention: {
+        codex: { enabled: true, archiveAfterDays: 14 },
+        claude: { enabled: false, archiveAfterDays: 14 },
+      },
+      marketplace: { name: "example", source: ".agents/plugins/marketplace.json" },
+      skills: [
+        { id: "claude-only", targets: ["claude"] },
+        { id: "shared", targets: ["claude", "codex"] },
+      ],
+      plugins: [],
+      instructions: [],
+      settings: [],
+      thirdParty: [],
+    };
+
+    try {
+      for (const skill of manifest.skills) {
+        const skillDirectory = nodePath.join(projectRoot, "skills", skill.id);
+        mkdirSync(skillDirectory, { recursive: true });
+        writeFileSync(nodePath.join(skillDirectory, "SKILL.md"), skill.id);
+      }
+
+      const desiredFiles = await E.runPromise(
+        buildDesiredFiles(projectRoot, homeDirectory, manifest).pipe(E.provide(NodeServices.layer)),
+      );
+
+      expect(desiredFiles.map((file) => `${file.target}:${nodePath.basename(nodePath.dirname(file.destination))}`))
+        .toEqual(["claude:claude-only", "claude:shared", "codex:shared"]);
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+      rmSync(homeDirectory, { recursive: true, force: true });
+    }
   });
 });
