@@ -22,6 +22,7 @@ pnpm cli backup
 pnpm cli deploy
 pnpm cli check
 pnpm cli cleanup plan
+pnpm cli conversations plan
 pnpm check
 ```
 
@@ -48,9 +49,19 @@ pnpm cli memory plan --memory-target codex
 
 Memory removal first creates a recoverable copy under `~/.reed-ai/backups/`.
 
+Old local Codex conversations can be reviewed and archived through Codex's supported archive interface:
+
+```powershell
+pnpm cli conversations plan
+pnpm cli conversations apply --force
+pnpm cli conversations plan --older-than-days 30
+```
+
+The default retention threshold is configured in `config/manifest.json`. Archival uses last activity, protects current, active, pinned, recent, and partially eligible conversation trees, and writes metadata-only run journals under `~/.reed-ai/archive-runs/`. It is reversible organization, not deletion or disk cleanup. Claude Code is excluded because it does not expose a supported reversible local archive operation.
+
 `cleanup` is limited to legacy `.claude` and `.codex` snapshot directories inside this repository. The canonical `.agents/plugins/marketplace.json` file is outside its cleanup boundary. It never manages or deletes user-home `.agents`, Claude/Codex caches, or unknown home-directory content. `cleanup apply` requires `--force`.
 
-Backups and deployment hashes live under `~/.reed-ai/` and are not automatically expired.
+Backups, archive run journals, and deployment hashes live under `~/.reed-ai/` and are not automatically expired.
 
 ## Layout
 

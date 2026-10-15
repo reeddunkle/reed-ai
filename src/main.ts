@@ -10,7 +10,12 @@ const homeDirectory = process.env.USERPROFILE ?? process.env.HOME;
 if (homeDirectory === undefined) throw new Error("USERPROFILE or HOME is required");
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
-const command = makeRootCommand({ homeDirectory, projectRoot });
+const command = makeRootCommand({
+  codexExecutable: process.env.CODEX_CLI_PATH ?? "codex",
+  currentThreadId: process.env.CODEX_THREAD_ID,
+  homeDirectory,
+  projectRoot,
+});
 const program = Command.run(command, { version: "0.1.0" });
 
 program.pipe(

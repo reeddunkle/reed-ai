@@ -1,5 +1,6 @@
 import * as Console from "effect/Console";
 import * as E from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Command from "effect/cli/Command";
 import * as Flag from "effect/cli/Flag";
 
@@ -8,14 +9,20 @@ import {
   legacyProjectSnapshotDirectories,
   removeLegacyProjectSnapshots,
 } from "./cleanup.js";
+import {
+  applyCodexConversationArchive,
+  planCodexConversationArchive,
+} from "./conversation-archive.js";
 import type { TargetSelection } from "./domain.js";
-import { DriftDetectedError } from "./errors.js";
+import { ConversationArchiveError, DriftDetectedError } from "./errors.js";
 import { backupPlan, deployPlan } from "./executor.js";
 import { applyMemoryCleanup, planMemoryCleanup } from "./memory-cleanup.js";
 import { actionablePlan } from "./planner.js";
 import { buildPlan, loadWorkspace, validateProject } from "./workspace.js";
 
 type CommandEnvironment = {
+  readonly codexExecutable: string;
+  readonly currentThreadId: string | undefined;
   readonly homeDirectory: string;
   readonly projectRoot: string;
 };
@@ -37,7 +44,12 @@ const printPlan = (
     { discard: true },
   );
 
-export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironment) => {
+export const makeRootCommand = ({
+  codexExecutable,
+  currentThreadId,
+  homeDirectory,
+  projectRoot,
+}: CommandEnvironment) => {
   const rootCommand = Command.make("reed-ai").pipe(
     Command.withSharedFlags({
       home: Flag.String("home").pipe(Flag.withDefault(homeDirectory)),
@@ -204,6 +216,101 @@ export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironme
     Command.withSubcommands([memoryPlanCommand, memoryApplyCommand]),
   );
 
+  const conversationFlags = {
+    olderThanDays: Flag.Int("older-than-days").pipe(Flag.optional),
+  };
+  const resolveConversationPolicy = E.fnUntraced(function* (
+    olderThanDays: Option.Option<number>,
+  ) {
+    const deployment = yield* deploymentEnvironment;
+    const workspace = yield* loadWorkspace(projectRoot, deployment.homeDirectory);
+    const policy = workspace.manifest.conversationRetention.codex;
+    if (!policy.enabled) {
+      return yield* new ConversationArchiveError({
+        message: "Codex conversation archival is disabled in config/manifest.json",
+      });
+    }
+    const archiveAfterDays = Option.getOrElse(olderThanDays, () => policy.archiveAfterDays);
+    if (archiveAfterDays < 1) {
+      return yield* new ConversationArchiveError({
+        message: "--older-than-days must be an integer greater than zero",
+      });
+    }
+    return {
+      archiveAfterDays,
+      homeDirectory: deployment.homeDirectory,
+    } as const;
+  });
+  const conversationPlanCommand = Command.make(
+    "plan",
+    {
+      ...conversationFlags,
+      json: Flag.Boolean("json").pipe(Flag.withDefault(false)),
+    },
+    ({ json, olderThanDays }) =>
+      E.gen(function* () {
+        const policy = yield* resolveConversationPolicy(olderThanDays);
+        const plan = yield* planCodexConversationArchive(
+          policy.archiveAfterDays,
+          currentThreadId,
+          codexExecutable,
+        );
+        if (json) {
+          yield* Console.log(JSON.stringify(plan, null, 2));
+        } else if (plan.candidates.length === 0) {
+          yield* Console.log(`No local Codex conversations were last updated before ${plan.cutoff}.`);
+        } else {
+          yield* Console.log(
+            `${plan.candidates.length} local Codex conversation${plan.candidates.length === 1 ? "" : "s"} were last updated before ${plan.cutoff}:`,
+          );
+          yield* E.forEach(
+            plan.candidates,
+            (candidate) =>
+              Console.log(
+                `${candidate.id} ${new Date(candidate.updatedAt * 1000).toISOString()} ${candidate.title}`,
+              ),
+            { discard: true },
+          );
+        }
+      }),
+  );
+  const conversationApplyCommand = Command.make(
+    "apply",
+    {
+      ...conversationFlags,
+      force: Flag.Boolean("force").pipe(Flag.withDefault(false)),
+    },
+    ({ force, olderThanDays }) =>
+      E.gen(function* () {
+        if (!force) return yield* new DriftDetectedError({ count: 1 });
+        const policy = yield* resolveConversationPolicy(olderThanDays);
+        const plan = yield* planCodexConversationArchive(
+          policy.archiveAfterDays,
+          currentThreadId,
+          codexExecutable,
+        );
+        const result = yield* applyCodexConversationArchive(
+          policy.homeDirectory,
+          plan,
+          codexExecutable,
+        );
+        const archived = result.results.filter(({ status }) => status === "archived").length;
+        const failed = result.results.length - archived;
+        yield* Console.log(
+          `Archived ${archived} conversation${archived === 1 ? "" : "s"}. Journal written to ${result.journalPath}`,
+        );
+        if (failed > 0) {
+          return yield* new ConversationArchiveError({
+            message: `${failed} conversation${failed === 1 ? "" : "s"} could not be archived`,
+          });
+        }
+      }),
+  );
+  const conversationsCommand = Command.make("conversations").pipe(
+    Command.withDescription("Plan or apply native archival of old local Codex conversations."),
+    Command.withSubcommands([conversationPlanCommand, conversationApplyCommand]),
+  );
+
   return rootCommand.pipe(
     Command.withDescription("Manage shared Claude and Codex skills from one source of truth."),
     Command.withSubcommands([
@@ -213,6 +320,7 @@ export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironme
       backupCommand,
       cleanupCommand,
       memoryCommand,
+      conversationsCommand,
     ]),
   );
 };

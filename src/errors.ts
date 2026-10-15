@@ -15,3 +15,7 @@ export class ConflictDetectedError extends Data.TaggedError("ConflictDetectedErr
 export class InvalidSettingsError extends Data.TaggedError("InvalidSettingsError")<{
   readonly message: string;
 }> {}
+
+export class ConversationArchiveError extends Data.TaggedError("ConversationArchiveError")<{
+  readonly message: string;
+}> {}

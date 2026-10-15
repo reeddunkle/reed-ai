@@ -3,6 +3,16 @@ export type TargetSelection = Target | "all";
 
 export type Manifest = {
   readonly version: 1;
+  readonly conversationRetention: {
+    readonly codex: {
+      readonly enabled: boolean;
+      readonly archiveAfterDays: number;
+    };
+    readonly claude: {
+      readonly enabled: boolean;
+      readonly archiveAfterDays: number;
+    };
+  };
   readonly marketplace: {
     readonly name: string;
     readonly source: string;

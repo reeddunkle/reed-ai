@@ -1,5 +1,15 @@
 {
   "version": 1,
+  "conversationRetention": {
+    "codex": {
+      "enabled": true,
+      "archiveAfterDays": 14
+    },
+    "claude": {
+      "enabled": false,
+      "archiveAfterDays": 14
+    }
+  },
   "marketplace": {
     "name": "reed-ai",
     "source": ".agents/plugins/marketplace.json"
