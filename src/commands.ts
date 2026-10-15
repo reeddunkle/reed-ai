@@ -1,10 +1,13 @@
 import * as Console from "effect/Console";
 import * as E from "effect/Effect";
-import * as FileSystem from "effect/FileSystem";
-import * as Path from "effect/Path";
 import * as Command from "effect/cli/Command";
 import * as Flag from "effect/cli/Flag";
 
+import {
+  findLegacyProjectSnapshots,
+  legacyProjectSnapshotDirectories,
+  removeLegacyProjectSnapshots,
+} from "./cleanup.js";
 import type { TargetSelection } from "./domain.js";
 import { DriftDetectedError } from "./errors.js";
 import { backupPlan, deployPlan } from "./executor.js";
@@ -126,19 +129,13 @@ export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironme
     }),
   ).pipe(Command.withDescription("Back up existing managed destination files."));
 
-  const legacyDirectories = [".agents", ".claude", ".codex"];
   const cleanupPlanCommand = Command.make("plan", {}, () =>
     E.gen(function* () {
-      const fileSystem = yield* FileSystem.FileSystem;
-      const path = yield* Path.Path;
-      const existing = yield* E.filter(
-        legacyDirectories,
-        (directory) => fileSystem.exists(path.join(projectRoot, directory)),
-      );
+      const existing = yield* findLegacyProjectSnapshots(projectRoot);
       if (existing.length === 0) {
         yield* Console.log("No legacy project snapshot directories remain.");
       } else {
-        yield* E.forEach(existing, (directory) => Console.log(`project snapshot ${path.join(projectRoot, directory)}`));
+        yield* E.forEach(existing, (directory) => Console.log(`project snapshot ${directory}`));
       }
     }),
   );
@@ -148,16 +145,9 @@ export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironme
     ({ force }) =>
       E.gen(function* () {
         if (!force) {
-          return yield* new DriftDetectedError({ count: legacyDirectories.length });
+          return yield* new DriftDetectedError({ count: legacyProjectSnapshotDirectories.length });
         }
-        const fileSystem = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        yield* E.forEach(legacyDirectories, (directory) => {
-          const target = path.join(projectRoot, directory);
-          return fileSystem.exists(target).pipe(
-            E.flatMap((exists) => exists ? fileSystem.remove(target, { recursive: true }) : E.void),
-          );
-        });
+        yield* removeLegacyProjectSnapshots(projectRoot);
         yield* Console.log("Removed legacy project snapshot directories. User home directories were untouched.");
       }),
   );

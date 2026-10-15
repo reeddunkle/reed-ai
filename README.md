@@ -36,7 +36,7 @@ pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude check
 
 `plan` is read-only. `deploy` writes only manifest-declared destinations and refuses unrecorded local edits. Shared standalone skills deploy to both tools, while pstack deploys to Claude and installs into Codex through the `reed-ai` marketplace. After reviewing and backing up an intentional first migration, `deploy --force` accepts the existing destinations as the baseline. Later runs should not need `--force`.
 
-`cleanup` is limited to legacy snapshot directories inside this repository. It never manages or deletes `~/.agents`, Claude/Codex caches, or unknown home-directory content. `cleanup apply` requires `--force`.
+`cleanup` is limited to legacy `.claude` and `.codex` snapshot directories inside this repository. The canonical `.agents/plugins/marketplace.json` file is outside its cleanup boundary. It never manages or deletes user-home `.agents`, Claude/Codex caches, or unknown home-directory content. `cleanup apply` requires `--force`.
 
 Backups and deployment hashes live under `~/.reed-ai/` and are not automatically expired.
 
