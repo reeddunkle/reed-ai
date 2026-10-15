@@ -49,7 +49,10 @@ export const deployPlan = (plan: WorkspacePlan, force: boolean) =>
       ),
     );
     const state = Object.fromEntries(
-      plan.actions.map((action) => [action.destination, hashContents(action.contents)]),
+      plan.actions.map((action) => [
+        action.destination,
+        hashContents(action.desiredState ?? action.contents),
+      ]),
     );
     yield* fileSystem.makeDirectory(dirnamePath(path, plan.statePath), { recursive: true });
     yield* fileSystem.writeFileString(plan.statePath, `${JSON.stringify(state, null, 2)}\n`);

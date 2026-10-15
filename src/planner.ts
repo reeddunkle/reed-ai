@@ -9,15 +9,20 @@ export const classifyFile = (
   currentContents: string | undefined,
   lastDeployedHash: string | undefined,
 ): PlanAction => {
-  if (currentContents === desired.contents) {
-    return { ...desired, kind: "unchanged", currentContents };
+  const desiredState = desired.desiredState ?? desired.contents;
+  const currentState = desired.currentState ?? currentContents;
+
+  if (currentState === desiredState) {
+    return currentContents === undefined
+      ? { ...desired, kind: "unchanged" }
+      : { ...desired, kind: "unchanged", currentContents };
   }
 
   if (currentContents === undefined) {
     return { ...desired, kind: "create" };
   }
 
-  if (lastDeployedHash === undefined || hashContents(currentContents) !== lastDeployedHash) {
+  if (lastDeployedHash === undefined || hashContents(currentState ?? "") !== lastDeployedHash) {
     return { ...desired, kind: "conflict", currentContents };
   }
 

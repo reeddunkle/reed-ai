@@ -13,6 +13,13 @@ import { readManifest } from "./manifest.js";
 import { joinPath } from "./paths.js";
 import { classifyFile } from "./planner.js";
 import { renderForTarget } from "./render.js";
+import {
+  parseDesiredSettings,
+  reconcileJsonSettings,
+  reconcileTomlBooleans,
+  selectDesiredSettingRemovals,
+  selectDesiredSettings,
+} from "./structured-settings.js";
 
 type DeploymentState = Readonly<Record<string, string>>;
 type JsonRecord = Readonly<Record<string, unknown>>;
@@ -160,7 +167,39 @@ export const buildDesiredFiles = (
       ),
       { concurrency: "unbounded" },
     );
-    return [...skillFiles.flat(), ...pluginFiles.flat(), ...instructionFiles];
+    const settingsFiles = yield* E.all(
+      manifest.settings
+        .filter((setting) => selectedTargets.includes(setting.target))
+        .map((setting) =>
+          E.gen(function* () {
+            const source = path.join(projectRoot, setting.source);
+            const destination = joinPath(path, homeDirectory, setting.destination);
+            const desiredContents = yield* fileSystem.readFileString(source);
+            const currentContents = yield* readOptional(destination);
+            const desiredSettings = parseDesiredSettings(desiredContents);
+            const desired = selectDesiredSettings(
+              desiredSettings,
+              setting.selector,
+            );
+            const removals = selectDesiredSettingRemovals(
+              desiredSettings,
+              setting.selector,
+            );
+            const reconciled =
+              setting.format === "json"
+                ? reconcileJsonSettings(currentContents, desired, removals)
+                : reconcileTomlBooleans(currentContents, desired);
+            return {
+              source,
+              destination,
+              target: setting.target,
+              ...reconciled,
+            } satisfies DesiredFile;
+          }),
+        ),
+      { concurrency: "unbounded" },
+    );
+    return [...skillFiles.flat(), ...pluginFiles.flat(), ...instructionFiles, ...settingsFiles];
   });
 
 export const buildPlan = (

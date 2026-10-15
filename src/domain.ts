@@ -19,6 +19,13 @@ export type Manifest = {
     readonly source: string;
     readonly destinations: ReadonlyArray<string>;
   }>;
+  readonly settings: ReadonlyArray<{
+    readonly source: string;
+    readonly destination: string;
+    readonly target: Target;
+    readonly selector: "claude.settings" | "codex.config";
+    readonly format: "json" | "toml-booleans";
+  }>;
   readonly thirdParty: ReadonlyArray<{
     readonly id: string;
     readonly source?: string;
@@ -32,6 +39,9 @@ export type DesiredFile = {
   readonly destination: string;
   readonly target: Target;
   readonly contents: string;
+  readonly desiredState?: string;
+  readonly currentState?: string;
+  readonly changedPaths?: ReadonlyArray<string>;
 };
 
 export type PlanAction = {
@@ -41,4 +51,7 @@ export type PlanAction = {
   readonly target: Target;
   readonly contents: string;
   readonly currentContents?: string;
+  readonly desiredState?: string;
+  readonly currentState?: string;
+  readonly changedPaths?: ReadonlyArray<string>;
 };

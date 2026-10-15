@@ -11,3 +11,7 @@ export class DriftDetectedError extends Data.TaggedError("DriftDetectedError")<{
 export class ConflictDetectedError extends Data.TaggedError("ConflictDetectedError")<{
   readonly count: number;
 }> {}
+
+export class InvalidSettingsError extends Data.TaggedError("InvalidSettingsError")<{
+  readonly message: string;
+}> {}

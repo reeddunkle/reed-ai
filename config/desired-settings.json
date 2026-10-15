@@ -1,9 +1,48 @@
 {
   "claude": {
     "enabledPlugins": ["mattpocock-skills@claude-plugins-official"],
-    "disableBundledSkills": true
+    "disableBundledSkills": true,
+    "settings": {
+      "$schema": "https://json.schemastore.org/claude-code-settings.json",
+      "permissions": {
+        "deny": [
+          "DesignSync",
+          "NotebookEdit",
+          "PushNotification",
+          "RemoteTrigger",
+          "ScheduleWakeup",
+          "CronCreate",
+          "CronDelete",
+          "CronList"
+        ]
+      },
+      "disableClaudeAiConnectors": true,
+      "disableBundledSkills": true,
+      "disableRemoteControl": true,
+      "disableWorkflows": true,
+      "enableArtifact": false,
+      "autoUpdatesChannel": "latest",
+      "theme": "dark",
+      "autoMemoryEnabled": false,
+      "env": {
+        "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"
+      }
+    },
+    "settingsToRemove": ["disableArtifact"]
   },
   "codex": {
-    "enabledPlugins": ["mattpocock-skills@claude-plugins-official"]
+    "enabledPlugins": ["mattpocock-skills@claude-plugins-official"],
+    "config": {
+      "features": {
+        "memories": false
+      },
+      "memories": {
+        "generate_memories": false,
+        "use_memories": false
+      },
+      "analytics": {
+        "enabled": false
+      }
+    }
   }
 }

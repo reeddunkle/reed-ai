@@ -36,6 +36,18 @@ pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude check
 
 `plan` is read-only. `deploy` writes only manifest-declared destinations and refuses unrecorded local edits. Shared standalone skills deploy to both tools, while pstack deploys to Claude and installs into Codex through the `reed-ai` marketplace. After reviewing and backing up an intentional first migration, `deploy --force` accepts the existing destinations as the baseline. Later runs should not need `--force`.
 
+Selected user-level settings are reconciled from `config/desired-settings.json` into `~/.claude/settings.json` and `~/.codex/config.toml`. Only declared setting paths are managed; unrelated local settings are preserved. Codex TOML management is intentionally limited to declared boolean values and rejects ambiguous relevant tables.
+
+Local memories can be reviewed and removed independently from deployment:
+
+```powershell
+pnpm cli memory plan --memory-target claude
+pnpm cli memory apply --memory-target claude --force
+pnpm cli memory plan --memory-target codex
+```
+
+Memory removal first creates a recoverable copy under `~/.reed-ai/backups/`.
+
 `cleanup` is limited to legacy `.claude` and `.codex` snapshot directories inside this repository. The canonical `.agents/plugins/marketplace.json` file is outside its cleanup boundary. It never manages or deletes user-home `.agents`, Claude/Codex caches, or unknown home-directory content. `cleanup apply` requires `--force`.
 
 Backups and deployment hashes live under `~/.reed-ai/` and are not automatically expired.
@@ -47,7 +59,7 @@ Backups and deployment hashes live under `~/.reed-ai/` and are not automatically
 - `.agents/plugins/marketplace.json`: repo marketplace exposing `pstack-skills@reed-ai`
 - `instructions/shared.md`: portable global instructions deployed to both tools
 - `config/manifest.json`: allowlisted sources and destinations
-- `config/desired-settings.json`: declarative plugin and preference intent; not a full live-config replacement
+- `config/desired-settings.json`: declarative plugin and selected user-level preference intent
 - `src/`: Effect CLI, planner, renderer, and executor
 - `test/`: reconciliation and rendering behavior
 

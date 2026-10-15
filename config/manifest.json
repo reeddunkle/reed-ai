@@ -31,6 +31,22 @@
       ]
     }
   ],
+  "settings": [
+    {
+      "source": "config/desired-settings.json",
+      "destination": ".claude/settings.json",
+      "target": "claude",
+      "selector": "claude.settings",
+      "format": "json"
+    },
+    {
+      "source": "config/desired-settings.json",
+      "destination": ".codex/config.toml",
+      "target": "codex",
+      "selector": "codex.config",
+      "format": "toml-booleans"
+    }
+  ],
   "thirdParty": [
     {
       "id": "find-skills",

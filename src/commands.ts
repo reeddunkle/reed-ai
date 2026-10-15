@@ -11,6 +11,7 @@ import {
 import type { TargetSelection } from "./domain.js";
 import { DriftDetectedError } from "./errors.js";
 import { backupPlan, deployPlan } from "./executor.js";
+import { applyMemoryCleanup, planMemoryCleanup } from "./memory-cleanup.js";
 import { actionablePlan } from "./planner.js";
 import { buildPlan, loadWorkspace, validateProject } from "./workspace.js";
 
@@ -19,10 +20,22 @@ type CommandEnvironment = {
   readonly projectRoot: string;
 };
 
-const printPlan = (actions: ReadonlyArray<{ readonly kind: string; readonly destination: string }>) =>
-  E.forEach(actions, (action) => Console.log(`${action.kind.padEnd(9)} ${action.destination}`), {
-    discard: true,
-  });
+const printPlan = (
+  actions: ReadonlyArray<{
+    readonly kind: string;
+    readonly destination: string;
+    readonly changedPaths?: ReadonlyArray<string>;
+  }>,
+) =>
+  E.forEach(
+    actions,
+    (action) =>
+      E.gen(function* () {
+        yield* Console.log(`${action.kind.padEnd(9)} ${action.destination}`);
+        yield* E.forEach(action.changedPaths ?? [], (path) => Console.log(`          ${path}`));
+      }),
+    { discard: true },
+  );
 
 export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironment) => {
   const rootCommand = Command.make("reed-ai").pipe(
@@ -156,6 +169,41 @@ export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironme
     Command.withSubcommands([cleanupPlanCommand, cleanupApplyCommand]),
   );
 
+  const memoryTarget = Flag.Literals("memory-target", ["claude", "codex"] as const);
+  const memoryPlanCommand = Command.make("plan", { memoryTarget }, ({ memoryTarget }) =>
+    E.gen(function* () {
+      const deployment = yield* deploymentEnvironment;
+      const plan = yield* planMemoryCleanup(deployment.homeDirectory, memoryTarget);
+      if (plan.directories.length === 0) {
+        yield* Console.log(`No ${memoryTarget} memory directories exist.`);
+      } else {
+        yield* E.forEach(plan.directories, (directory) => Console.log(`memory directory ${directory}`));
+      }
+    }),
+  );
+  const memoryApplyCommand = Command.make(
+    "apply",
+    {
+      memoryTarget,
+      force: Flag.Boolean("force").pipe(Flag.withDefault(false)),
+    },
+    ({ force, memoryTarget }) =>
+      E.gen(function* () {
+        if (!force) return yield* new DriftDetectedError({ count: 1 });
+        const deployment = yield* deploymentEnvironment;
+        const result = yield* applyMemoryCleanup(deployment.homeDirectory, memoryTarget);
+        yield* Console.log(
+          result.backupDirectory === undefined
+            ? `No ${memoryTarget} memory directory exists.`
+            : `Backed up memories to ${result.backupDirectory} and removed ${result.directories.length} director${result.directories.length === 1 ? "y" : "ies"}.`,
+        );
+      }),
+  );
+  const memoryCommand = Command.make("memory").pipe(
+    Command.withDescription("Plan or apply backed-up removal of local agent memories."),
+    Command.withSubcommands([memoryPlanCommand, memoryApplyCommand]),
+  );
+
   return rootCommand.pipe(
     Command.withDescription("Manage shared Claude and Codex skills from one source of truth."),
     Command.withSubcommands([
@@ -164,6 +212,7 @@ export const makeRootCommand = ({ homeDirectory, projectRoot }: CommandEnvironme
       checkCommand,
       backupCommand,
       cleanupCommand,
+      memoryCommand,
     ]),
   );
 };

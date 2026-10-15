@@ -24,6 +24,8 @@ export const readManifest = (manifestPath: string) =>
       !Array.isArray(value.plugins) ||
       !("instructions" in value) ||
       !Array.isArray(value.instructions) ||
+      !("settings" in value) ||
+      !Array.isArray(value.settings) ||
       !("thirdParty" in value) ||
       !Array.isArray(value.thirdParty)
     ) {

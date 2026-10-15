@@ -30,6 +30,17 @@ describe("classifyFile", () => {
   it("refuses unrecorded local content as a conflict", () => {
     expect(classifyFile(desired, "local", hashContents("old")).kind).toBe("conflict");
   });
+
+  it("ignores changes outside a structured managed projection", () => {
+    const structured: DesiredFile = {
+      ...desired,
+      contents: "merged unmanaged content",
+      currentState: '{"enabled":false}',
+      desiredState: '{"enabled":false}',
+    };
+
+    expect(classifyFile(structured, "different full file", undefined).kind).toBe("unchanged");
+  });
 });
 
 describe("renderForTarget", () => {
