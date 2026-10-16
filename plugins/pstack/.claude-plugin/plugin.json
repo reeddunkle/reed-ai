@@ -1,7 +1,7 @@
 {
 	"name": "pstack-skills",
 	"displayName": "pstack (skills)",
-	"version": "0.15.2",
+	"version": "0.15.3",
 	"description": "Skills-only Claude port of pstack, a rigorous agent-workflow skill collection: design, review, verification, and engineering-principle skills you can parallelize with confidence. Ported from the original Cursor plugin; agents, automations, and Cursor-only mechanisms were left behind. See PORTING_NOTES.md.",
 	"author": {
 		"name": "Lauren Tan"

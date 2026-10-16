@@ -20,6 +20,10 @@
       "targets": ["claude"]
     },
     {
+      "id": "caveman",
+      "targets": ["claude", "codex"]
+    },
+    {
       "id": "code-comment-policy",
       "targets": ["claude", "codex"]
     },

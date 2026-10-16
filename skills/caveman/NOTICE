@@ -1,0 +1,9 @@
+Caveman
+Copyright 2026 Julius Brussee
+
+skills/caveman/SKILL.md is taken from https://github.com/JuliusBrussee/caveman
+at commit d262ab3882952a59312ff3537cd86d894523c5ab (skills/caveman/SKILL.md),
+licensed under the Apache License, Version 2.0; see LICENSE.
+
+Local changes: added `disable-model-invocation: true` to the frontmatter and
+agents/openai.yaml so the skill runs only when invoked explicitly.

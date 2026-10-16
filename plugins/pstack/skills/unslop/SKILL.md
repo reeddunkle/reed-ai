@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Edit text to remove AI patterns.
 
+If caveman mode is active, suspend it for this output and write normal prose. Resume caveman afterward.
+
 ## Process
 
 1. Scan for the patterns below.

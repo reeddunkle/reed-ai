@@ -1,6 +1,6 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "pstack-skills",
-  "version": "0.15.2",
+  "version": "0.15.3",
   "description": "Rigorous agent workflows for design, review, verification, and engineering principles."
 }
