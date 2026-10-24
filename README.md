@@ -26,13 +26,18 @@ pnpm cli conversations plan
 pnpm check
 ```
 
-Shared flags select another home directory or a single runtime:
+`plan`, `deploy`, `check`, and `backup` run across every environment declared in `config/manifest.json`. An environment without `homeVariable` uses the current user's home. Machine-specific homes, such as a WSL home, live in a gitignored `.env`:
 
 ```powershell
+Copy-Item .env.example .env
+```
+
+Deploy plans every environment first and writes nothing if any environment is unresolved, unreachable, or has conflicts. Shared flags narrow a run, or bypass the configured environments with an ad hoc home:
+
+```powershell
+pnpm cli --environment wsl plan
+pnpm cli --environment windows --target codex deploy
 pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude plan
-pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude backup
-pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude deploy
-pnpm cli --home //wsl.localhost/Ubuntu/home/example --target claude check
 ```
 
 `plan` is read-only. `deploy` writes only manifest-declared destinations and refuses unrecorded local edits. Each standalone skill declares its Claude and Codex deployment targets in the manifest. Pstack deploys to Claude and installs into Codex through the `reed-ai` marketplace. After reviewing and backing up an intentional first migration, `deploy --force` accepts the existing destinations as the baseline. Later runs should not need `--force`.

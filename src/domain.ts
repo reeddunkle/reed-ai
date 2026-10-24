@@ -1,8 +1,15 @@
 export type Target = "claude" | "codex";
 export type TargetSelection = Target | "all";
 
+export type Environment = {
+  readonly id: string;
+  readonly homeVariable?: string;
+  readonly targets: ReadonlyArray<Target>;
+};
+
 export type Manifest = {
   readonly version: 1;
+  readonly environments: ReadonlyArray<Environment>;
   readonly conversationRetention: {
     readonly codex: {
       readonly enabled: boolean;

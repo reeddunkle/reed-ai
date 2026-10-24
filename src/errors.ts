@@ -19,3 +19,7 @@ export class InvalidSettingsError extends Data.TaggedError("InvalidSettingsError
 export class ConversationArchiveError extends Data.TaggedError("ConversationArchiveError")<{
   readonly message: string;
 }> {}
+
+export class EnvironmentResolutionError extends Data.TaggedError("EnvironmentResolutionError")<{
+  readonly message: string;
+}> {}

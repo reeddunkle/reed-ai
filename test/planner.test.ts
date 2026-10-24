@@ -79,6 +79,7 @@ describe("buildDesiredFiles", () => {
     const homeDirectory = mkdtempSync(nodePath.join(tmpdir(), "reed-ai-home-"));
     const manifest: Manifest = {
       version: 1,
+      environments: [{ id: "local", targets: ["claude", "codex"] }],
       conversationRetention: {
         codex: { enabled: true, archiveAfterDays: 14 },
         claude: { enabled: false, archiveAfterDays: 14 },

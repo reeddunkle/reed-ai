@@ -7,7 +7,6 @@ import type {
   Manifest,
   PlanAction,
   Target,
-  TargetSelection,
 } from "./domain.js";
 import { readManifest } from "./manifest.js";
 import { joinPath } from "./paths.js";
@@ -24,7 +23,7 @@ import {
 type DeploymentState = Readonly<Record<string, string>>;
 type JsonRecord = Readonly<Record<string, unknown>>;
 
-const targets: ReadonlyArray<Target> = ["claude", "codex"];
+export const targets: ReadonlyArray<Target> = ["claude", "codex"];
 
 const readOptional = (filePath: string) =>
   E.gen(function* () {
@@ -115,13 +114,11 @@ export const buildDesiredFiles = (
   projectRoot: string,
   homeDirectory: string,
   manifest: Manifest,
-  targetSelection: TargetSelection = "all",
+  selectedTargets: ReadonlyArray<Target> = targets,
 ) =>
   E.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const selectedTargets =
-      targetSelection === "all" ? targets : targets.filter((target) => target === targetSelection);
     const skillFiles = yield* E.all(
       manifest.skills.flatMap((skill) =>
         selectedTargets.filter((target) => skill.targets.includes(target)).map((target) => {
@@ -205,7 +202,7 @@ export const buildDesiredFiles = (
 export const buildPlan = (
   projectRoot: string,
   homeDirectory: string,
-  targetSelection: TargetSelection = "all",
+  selectedTargets: ReadonlyArray<Target> = targets,
 ) =>
   E.gen(function* () {
     const workspace = yield* loadWorkspace(projectRoot, homeDirectory);
@@ -213,7 +210,7 @@ export const buildPlan = (
       projectRoot,
       homeDirectory,
       workspace.manifest,
-      targetSelection,
+      selectedTargets,
     );
     const state = yield* readState(workspace.statePath);
     const actions = yield* E.all(

@@ -21,6 +21,19 @@ const isSkill = (value: unknown) =>
   value.targets.every(isTarget) &&
   new Set(value.targets).size === value.targets.length;
 
+const isEnvironment = (value: unknown) =>
+  isSkill(value) &&
+  typeof value === "object" &&
+  value !== null &&
+  (!("homeVariable" in value) ||
+    (typeof value.homeVariable === "string" && /^[A-Z_][A-Z0-9_]*$/.test(value.homeVariable)));
+
+const isEnvironmentArray = (value: unknown) =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every(isEnvironment) &&
+  new Set(value.map((environment: { readonly id: string }) => environment.id)).size === value.length;
+
 const isSkillArray = (value: unknown) => Array.isArray(value) && value.every(isSkill);
 
 const isRetentionTarget = (value: unknown) =>
@@ -44,6 +57,8 @@ export const readManifest = (manifestPath: string) =>
       value === null ||
       !("version" in value) ||
       value.version !== 1 ||
+      !("environments" in value) ||
+      !isEnvironmentArray(value.environments) ||
       !("conversationRetention" in value) ||
       typeof value.conversationRetention !== "object" ||
       value.conversationRetention === null ||

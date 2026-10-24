@@ -14,7 +14,8 @@ import {
   planCodexConversationArchive,
 } from "./conversation-archive.js";
 import type { TargetSelection } from "./domain.js";
-import { ConversationArchiveError, DriftDetectedError } from "./errors.js";
+import { type ResolvedEnvironment, resolveEnvironments } from "./environments.js";
+import { ConflictDetectedError, ConversationArchiveError, DriftDetectedError } from "./errors.js";
 import { backupPlan, deployPlan } from "./executor.js";
 import { applyMemoryCleanup, planMemoryCleanup } from "./memory-cleanup.js";
 import { actionablePlan } from "./planner.js";
@@ -23,6 +24,7 @@ import { buildPlan, loadWorkspace, validateProject } from "./workspace.js";
 type CommandEnvironment = {
   readonly codexExecutable: string;
   readonly currentThreadId: string | undefined;
+  readonly environmentVariables: Readonly<Record<string, string | undefined>>;
   readonly homeDirectory: string;
   readonly projectRoot: string;
 };
@@ -47,43 +49,70 @@ const printPlan = (
 export const makeRootCommand = ({
   codexExecutable,
   currentThreadId,
+  environmentVariables,
   homeDirectory,
   projectRoot,
 }: CommandEnvironment) => {
   const rootCommand = Command.make("reed-ai").pipe(
     Command.withSharedFlags({
-      home: Flag.String("home").pipe(Flag.withDefault(homeDirectory)),
+      home: Flag.String("home").pipe(Flag.optional),
+      environment: Flag.String("environment").pipe(Flag.optional),
       target: Flag.Literals("target", ["all", "claude", "codex"] as const).pipe(
         Flag.withDefault("all" as const),
       ),
     }),
   );
-  const deploymentEnvironment = E.gen(function* () {
+  const localHome = rootCommand.pipe(
+    E.map((config) => Option.getOrElse(config.home, () => homeDirectory)),
+  );
+  const environmentPlans = E.gen(function* () {
     const config = yield* rootCommand;
-    return {
-      homeDirectory: config.home,
+    const workspace = yield* loadWorkspace(projectRoot, homeDirectory);
+    const environments = yield* resolveEnvironments({
+      defaultHome: homeDirectory,
+      environmentId: config.environment,
+      environments: workspace.manifest.environments,
+      home: config.home,
       targetSelection: config.target as TargetSelection,
-    };
+      variables: environmentVariables,
+    });
+    return yield* E.all(
+      environments.map((environment) =>
+        buildPlan(projectRoot, environment.homeDirectory, environment.targets).pipe(
+          E.map((plan) => ({ environment, plan })),
+        ),
+      ),
+      { concurrency: "unbounded" },
+    );
   });
+  const printEnvironmentHeader = (environment: ResolvedEnvironment) =>
+    Console.log(`[${environment.id}] ${environment.homeDirectory} (${environment.targets.join(", ")})`);
+
   const planCommand = Command.make(
     "plan",
     { json: Flag.Boolean("json").pipe(Flag.withDefault(false)) },
     ({ json }) =>
       E.gen(function* () {
-        const deployment = yield* deploymentEnvironment;
-        const plan = yield* buildPlan(
-          projectRoot,
-          deployment.homeDirectory,
-          deployment.targetSelection,
-        );
-        const actions = actionablePlan(plan.actions);
+        const plans = yield* environmentPlans;
         if (json) {
-          yield* Console.log(JSON.stringify(actions, null, 2));
-        } else if (actions.length === 0) {
-          yield* Console.log("No deployment drift.");
-        } else {
-          yield* printPlan(actions);
+          const report = plans.map(({ environment, plan }) => ({
+            environment: environment.id,
+            actions: actionablePlan(plan.actions),
+          }));
+          yield* Console.log(JSON.stringify(report, null, 2));
+          return;
         }
+        yield* E.forEach(
+          plans,
+          ({ environment, plan }) =>
+            E.gen(function* () {
+              const actions = actionablePlan(plan.actions);
+              yield* printEnvironmentHeader(environment);
+              if (actions.length === 0) yield* Console.log("No deployment drift.");
+              else yield* printPlan(actions);
+            }),
+          { discard: true },
+        );
       }),
   ).pipe(Command.withDescription("Show the allowlisted deployment plan without writing files."));
 
@@ -92,14 +121,31 @@ export const makeRootCommand = ({
     { force: Flag.Boolean("force").pipe(Flag.withDefault(false)) },
     ({ force }) =>
       E.gen(function* () {
-        const deployment = yield* deploymentEnvironment;
-        const plan = yield* buildPlan(
-          projectRoot,
-          deployment.homeDirectory,
-          deployment.targetSelection,
+        const plans = yield* environmentPlans;
+        const conflicts = plans.flatMap(({ environment, plan }) =>
+          plan.actions
+            .filter((action) => action.kind === "conflict")
+            .map((action) => ({ environment, action })),
         );
-        const changed = yield* deployPlan(plan, force);
-        yield* Console.log(`Deployed ${changed} file${changed === 1 ? "" : "s"}.`);
+        if (conflicts.length > 0 && !force) {
+          yield* E.forEach(
+            conflicts,
+            ({ action, environment }) =>
+              Console.error(`conflict  [${environment.id}] ${action.destination}`),
+            { discard: true },
+          );
+          return yield* new ConflictDetectedError({ count: conflicts.length });
+        }
+        yield* E.forEach(
+          plans,
+          ({ environment, plan }) =>
+            deployPlan(plan, force).pipe(
+              E.flatMap((changed) =>
+                Console.log(`[${environment.id}] Deployed ${changed} file${changed === 1 ? "" : "s"}.`),
+              ),
+            ),
+          { discard: true },
+        );
       }),
   ).pipe(Command.withDescription("Apply an allowlisted plan and record deployed hashes."));
 
@@ -108,8 +154,8 @@ export const makeRootCommand = ({
     { projectOnly: Flag.Boolean("project-only").pipe(Flag.withDefault(false)) },
     ({ projectOnly }) =>
       E.gen(function* () {
-        const deployment = yield* deploymentEnvironment;
-        const workspace = yield* loadWorkspace(projectRoot, deployment.homeDirectory);
+        const home = yield* localHome;
+        const workspace = yield* loadWorkspace(projectRoot, home);
         const validation = yield* validateProject(projectRoot, workspace.manifest);
         const validationProblems = [
           ...validation.marketplaceProblems,
@@ -126,16 +172,18 @@ export const makeRootCommand = ({
           return yield* new DriftDetectedError({ count: validationProblems.length });
         }
         if (!projectOnly) {
-          const plan = yield* buildPlan(
-            projectRoot,
-            deployment.homeDirectory,
-            deployment.targetSelection,
+          const plans = yield* environmentPlans;
+          const drifted = plans
+            .map(({ environment, plan }) => ({ environment, drift: actionablePlan(plan.actions) }))
+            .filter(({ drift }) => drift.length > 0);
+          yield* E.forEach(
+            drifted,
+            ({ drift, environment }) =>
+              printEnvironmentHeader(environment).pipe(E.andThen(printPlan(drift))),
+            { discard: true },
           );
-          const drift = actionablePlan(plan.actions);
-          if (drift.length > 0) {
-            yield* printPlan(drift);
-            return yield* new DriftDetectedError({ count: drift.length });
-          }
+          const count = drifted.reduce((total, { drift }) => total + drift.length, 0);
+          if (count > 0) return yield* new DriftDetectedError({ count });
         }
         yield* Console.log(projectOnly ? "Project sources are valid." : "Project and deployments are in sync.");
       }),
@@ -143,14 +191,15 @@ export const makeRootCommand = ({
 
   const backupCommand = Command.make("backup", {}, () =>
     E.gen(function* () {
-      const deployment = yield* deploymentEnvironment;
-      const plan = yield* buildPlan(
-        projectRoot,
-        deployment.homeDirectory,
-        deployment.targetSelection,
+      const plans = yield* environmentPlans;
+      yield* E.forEach(
+        plans,
+        ({ environment, plan }) =>
+          backupPlan(plan).pipe(
+            E.flatMap((backupRoot) => Console.log(`[${environment.id}] Backup written to ${backupRoot}`)),
+          ),
+        { discard: true },
       );
-      const backupRoot = yield* backupPlan(plan);
-      yield* Console.log(`Backup written to ${backupRoot}`);
     }),
   ).pipe(Command.withDescription("Back up existing managed destination files."));
 
@@ -184,8 +233,8 @@ export const makeRootCommand = ({
   const memoryTarget = Flag.Literals("memory-target", ["claude", "codex"] as const);
   const memoryPlanCommand = Command.make("plan", { memoryTarget }, ({ memoryTarget }) =>
     E.gen(function* () {
-      const deployment = yield* deploymentEnvironment;
-      const plan = yield* planMemoryCleanup(deployment.homeDirectory, memoryTarget);
+      const home = yield* localHome;
+      const plan = yield* planMemoryCleanup(home, memoryTarget);
       if (plan.directories.length === 0) {
         yield* Console.log(`No ${memoryTarget} memory directories exist.`);
       } else {
@@ -202,8 +251,8 @@ export const makeRootCommand = ({
     ({ force, memoryTarget }) =>
       E.gen(function* () {
         if (!force) return yield* new DriftDetectedError({ count: 1 });
-        const deployment = yield* deploymentEnvironment;
-        const result = yield* applyMemoryCleanup(deployment.homeDirectory, memoryTarget);
+        const home = yield* localHome;
+        const result = yield* applyMemoryCleanup(home, memoryTarget);
         yield* Console.log(
           result.backupDirectory === undefined
             ? `No ${memoryTarget} memory directory exists.`
@@ -222,8 +271,8 @@ export const makeRootCommand = ({
   const resolveConversationPolicy = E.fnUntraced(function* (
     olderThanDays: Option.Option<number>,
   ) {
-    const deployment = yield* deploymentEnvironment;
-    const workspace = yield* loadWorkspace(projectRoot, deployment.homeDirectory);
+    const home = yield* localHome;
+    const workspace = yield* loadWorkspace(projectRoot, home);
     const policy = workspace.manifest.conversationRetention.codex;
     if (!policy.enabled) {
       return yield* new ConversationArchiveError({
@@ -238,7 +287,7 @@ export const makeRootCommand = ({
     }
     return {
       archiveAfterDays,
-      homeDirectory: deployment.homeDirectory,
+      homeDirectory: home,
     } as const;
   });
   const conversationPlanCommand = Command.make(

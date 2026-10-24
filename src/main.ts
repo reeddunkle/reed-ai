@@ -2,6 +2,7 @@ import { NodeServices } from "@effect/platform-node";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as E from "effect/Effect";
 import * as Command from "effect/cli/Command";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { makeRootCommand } from "./commands.js";
@@ -10,9 +11,13 @@ const homeDirectory = process.env.USERPROFILE ?? process.env.HOME;
 if (homeDirectory === undefined) throw new Error("USERPROFILE or HOME is required");
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+const envFile = fileURLToPath(new URL("../.env", import.meta.url));
+if (existsSync(envFile)) process.loadEnvFile(envFile);
+
 const command = makeRootCommand({
   codexExecutable: process.env.CODEX_CLI_PATH ?? "codex",
   currentThreadId: process.env.CODEX_THREAD_ID,
+  environmentVariables: process.env,
   homeDirectory,
   projectRoot,
 });

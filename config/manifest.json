@@ -1,5 +1,16 @@
 {
   "version": 1,
+  "environments": [
+    {
+      "id": "windows",
+      "targets": ["claude", "codex"]
+    },
+    {
+      "id": "wsl",
+      "homeVariable": "REED_AI_WSL_HOME",
+      "targets": ["claude"]
+    }
+  ],
   "conversationRetention": {
     "codex": {
       "enabled": true,
