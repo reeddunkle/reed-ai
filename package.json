@@ -9,9 +9,16 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": "24.20.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.16.1",
+      "onFail": "error"
+    }
   },
   "dependencies": {
     "@effect/platform-node": "4.0.1",
